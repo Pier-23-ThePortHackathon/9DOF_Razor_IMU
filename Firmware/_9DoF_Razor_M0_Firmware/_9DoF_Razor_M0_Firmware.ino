@@ -105,6 +105,7 @@ void setup()
   // Initialize LED, interrupt input, and serial port.
   // LED defaults to off:
   initHardware(); 
+
 #ifdef ENABLE_NVRAM_STORAGE
   // Load previously-set logging parameters from nvram:
   initLoggingParams();
