@@ -65,6 +65,54 @@ bool sdCardPresent = false; // Keeps track of if SD card is plugged in
 String logFileName; // Active logging file
 String logFileBuffer; // Buffer for logged data. Max is set in config
 
+/////////////////////
+// Pressure Button //
+/////////////////////
+const int FSR_PIN = A0; // Pin connected to FSR/resistor divider
+const float VCC = 4.98; // Measured voltage of Ardunio 5V line
+const float R_DIV = 3230.0; // Measured resistance of 3.3k resistor
+const float PRESSURE_THRESH = 150.0f;
+const int PRESSED_THRESHOLD = 4; //TODO: TUNE
+int pressed_t = 0;
+bool btnPressed()
+{
+  int fsrADC = analogRead(FSR_PIN);
+  // If the FSR has no pressure, the resistance will be
+  // near infinite. So the voltage should be near 0.
+  if (fsrADC != 0) // If the analog reading is non-zero
+  {
+    // Use ADC reading to calculate voltage:
+    float fsrV = fsrADC * VCC / 1023.0;
+    // Use voltage and static resistor value to 
+    // calculate FSR resistance:
+    float fsrR = R_DIV * (VCC / fsrV - 1.0);
+    Serial1.println("Resistance: " + String(fsrR) + " ohms");
+    // Guesstimate force based on slopes in figure 3 of
+    // FSR datasheet:
+    float force;
+    float fsrG = 1.0 / fsrR; // Calculate conductance
+    // Break parabolic curve down into two linear slopes:
+    if (fsrR <= 600) 
+      force = (fsrG - 0.00075) / 0.00000032639;
+    else
+      force =  fsrG / 0.000000642857;
+
+    LOG_PORT.print("Force: " + String(force) + " g\n");
+    Serial1.println();
+    
+    if (force > PRESSURE_THRESH)
+    {
+      pressed_t += 1;
+    }
+
+    if (pressed_t >= PRESSED_THRESHOLD)
+    {
+      pressed_t = 0;
+      return true;
+    }
+    return false;
+  }
+}
 ///////////////////////
 // LED Blink Control //
 ///////////////////////
@@ -141,6 +189,11 @@ void loop()
     parseSerialInput(LOG_PORT.read()); // parse it
   }
 
+  if (btnPressed())
+  {
+    LOG_PORT.print("PRESSED\n"); //TODO: Write to SD card
+  }
+  /*
   // Then check IMU for new data, and log it
   if ( !imu.fifoAvailable() ) // If no new data is available
     return;                   // return to the top of the loop
@@ -163,7 +216,7 @@ void loop()
   {
     if ( Serial1.read() == '$' ) production_testing();
   }
-  
+  */
 }
 
 void logIMUData(void)
@@ -287,7 +340,7 @@ void initHardware(void)
 
   // Set up MPU-9250 interrupt input (active-low)
   pinMode(MPU9250_INT_PIN, INPUT_PULLUP);
-
+  
   // Set up serial log port
   LOG_PORT.begin(SERIAL_BAUD_RATE);
 }
