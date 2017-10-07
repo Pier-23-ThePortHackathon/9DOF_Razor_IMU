@@ -72,7 +72,7 @@ const int FSR_PIN = A0; // Pin connected to FSR/resistor divider
 const float VCC = 4.98; // Measured voltage of Ardunio 5V line
 const float R_DIV = 3230.0; // Measured resistance of 3.3k resistor
 const float PRESSURE_THRESH = 150.0f;
-const int PRESSED_THRESHOLD = 4; //TODO: TUNE
+const int PRESSED_THRESHOLD = 3; //TODO: TUNE
 int pressed_t = 0;
 bool btnPressed()
 {
