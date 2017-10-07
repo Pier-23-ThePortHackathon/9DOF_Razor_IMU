@@ -30,6 +30,9 @@ Hardware:
 #include <SparkFunMPU9250-DMP.h>
 // SD Library manages file and hardware control
 #include <SD.h>
+#include <TimeLib.h>
+#include "Timer.h"
+
 // config.h manages default logging parameters and can be used
 // to adjust specific parameters of the IMU
 #include "config.h"
@@ -64,6 +67,52 @@ unsigned short fifoRate = DMP_SAMPLE_RATE;
 bool sdCardPresent = false; // Keeps track of if SD card is plugged in
 String logFileName; // Active logging file
 String logFileBuffer; // Buffer for logged data. Max is set in config
+
+/////////////////////
+//   Timestamping  //
+/////////////////////
+Timer timer;
+const int timestamp_period = 600; //TODO: tune
+void put_timestamp()
+{
+  if(timeStatus() == timeNotSet)
+  {
+    LOG_PORT.print("TIME NOT SET\n");    
+    //setTime(1357041600);
+    //LOG_PORT.print("\n");
+  }
+  else
+  {
+    //String t_str = "T1357041600";
+    //LOG_PORT.print(t_str.toInt());
+    LOG_PORT.print(now());
+    LOG_PORT.print("TIME SET\n");
+  }
+  LOG_PORT.print("Event");
+}
+
+void set_time(uint32_t stamp)
+{
+  setTime(stamp);
+}
+
+void parse_serial_in()
+{
+  String serial_input;
+  LOG_PORT.print("WTF\n\n");
+  while(Serial1.available() > 0) 
+  {
+    // read the incoming byte:
+    char c = Serial1.read();
+    LOG_PORT.print(c);
+    serial_input += c;
+  }
+  if(serial_input.length() > 0)
+  {
+    LOG_PORT.print(serial_input);
+    set_time(serial_input.substring(1, serial_input.length()).toInt());
+  }
+}
 
 /////////////////////
 // Pressure Button //
@@ -175,6 +224,8 @@ void setup()
     logFileName = nextLogFile(); 
   }
 
+  int timestamp_event = timer.every(timestamp_period, put_timestamp);
+
   // For production testing only
   // To catch a "$" and enter testing mode
   Serial1.begin(9600);
@@ -188,11 +239,14 @@ void loop()
     // If new input is available on serial port
     parseSerialInput(LOG_PORT.read()); // parse it
   }
-
+  /*
   if (btnPressed())
   {
     LOG_PORT.print("PRESSED\n"); //TODO: Write to SD card
   }
+  */
+  parse_serial_in();
+  timer.update();
   /*
   // Then check IMU for new data, and log it
   if ( !imu.fifoAvailable() ) // If no new data is available
