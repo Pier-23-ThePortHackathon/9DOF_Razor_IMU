@@ -77,7 +77,7 @@ void put_timestamp()
 {
   if(timeStatus() == timeNotSet)
   {
-    LOG_PORT.print("TIME NOT SET\n");    
+    //LOG_PORT.print("TIME NOT SET\n");    
     //setTime(1357041600);
     //LOG_PORT.print("\n");
   }
@@ -85,33 +85,56 @@ void put_timestamp()
   {
     //String t_str = "T1357041600";
     //LOG_PORT.print(t_str.toInt());
-    LOG_PORT.print(now());
-    LOG_PORT.print("TIME SET\n");
+    //LOG_PORT.print(now());
+    //LOG_PORT.print("TIME SET\n");
   }
-  LOG_PORT.print("Event");
+  //LOG_PORT.print("Event");
 }
 
-void set_time(uint32_t stamp)
-{
-  setTime(stamp);
+/////////////////////
+//   TimeSerial    //
+/////////////////////
+#define TIME_HEADER  "T"   // Header tag for serial time sync message
+#define TIME_REQUEST  7    // ASCII bell character requests a time sync message 
+void digitalClockDisplay(){
+  // digital clock display of the time
+  LOG_PORT.print(hour());
+  printDigits(minute());
+  printDigits(second());
+  LOG_PORT.print(" ");
+  LOG_PORT.print(day());
+  LOG_PORT.print(" ");
+  LOG_PORT.print(month());
+  LOG_PORT.print(" ");
+  LOG_PORT.print(year()); 
+  LOG_PORT.println(); 
 }
 
-void parse_serial_in()
+void printDigits(int digits){
+  // utility function for digital clock display: prints preceding colon and leading 0
+  LOG_PORT.print(":");
+  if(digits < 10)
+    LOG_PORT.print('0');
+  LOG_PORT.print(digits);
+}
+
+
+void processSyncMessage() {
+  unsigned long pctime;
+  const unsigned long DEFAULT_TIME = 1357041600; // Jan 1 2013
+
+  if(LOG_PORT.find(TIME_HEADER)) {
+     pctime = LOG_PORT.parseInt();
+     if( pctime >= DEFAULT_TIME) { // check the integer is a valid time (greater than Jan 1 2013)
+       setTime(pctime); // Sync Arduino clock to the time received on the serial port
+     }
+  }
+}
+
+time_t requestSync()
 {
-  String serial_input;
-  LOG_PORT.print("WTF\n\n");
-  while(Serial1.available() > 0) 
-  {
-    // read the incoming byte:
-    char c = Serial1.read();
-    LOG_PORT.print(c);
-    serial_input += c;
-  }
-  if(serial_input.length() > 0)
-  {
-    LOG_PORT.print(serial_input);
-    set_time(serial_input.substring(1, serial_input.length()).toInt());
-  }
+  LOG_PORT.write(TIME_REQUEST);  
+  return 0; // the time will be sent later in response to serial mesg
 }
 
 /////////////////////
@@ -202,6 +225,7 @@ void setup()
   // Initialize LED, interrupt input, and serial port.
   // LED defaults to off:
   initHardware(); 
+  setSyncProvider( requestSync);  //set function to call when sync required
 
 #ifdef ENABLE_NVRAM_STORAGE
   // Load previously-set logging parameters from nvram:
@@ -234,18 +258,32 @@ void setup()
 void loop()
 {
   // The loop constantly checks for new serial input:
+  /*
   if ( LOG_PORT.available() )
   {
     // If new input is available on serial port
     parseSerialInput(LOG_PORT.read()); // parse it
   }
+  */
   /*
   if (btnPressed())
   {
     LOG_PORT.print("PRESSED\n"); //TODO: Write to SD card
   }
   */
-  parse_serial_in();
+
+  if (LOG_PORT.available()) {
+    processSyncMessage();
+  }
+  if (timeStatus()!= timeNotSet) {
+    digitalClockDisplay();  
+  }
+  if (timeStatus() == timeSet) {
+    digitalWrite(13, HIGH); // LED on if synced
+  } else {
+    digitalWrite(13, LOW);  // LED off if needs refresh
+  }
+  
   timer.update();
   /*
   // Then check IMU for new data, and log it
