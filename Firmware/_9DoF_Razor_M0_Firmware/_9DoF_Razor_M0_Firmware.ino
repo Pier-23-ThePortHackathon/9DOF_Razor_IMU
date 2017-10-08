@@ -122,6 +122,7 @@ const float R_DIV = 3230.0; // Measured resistance of 3.3k resistor
 const float PRESSURE_THRESH = 150.0f;
 const int PRESSED_THRESHOLD = 4; //TODO: TUNE
 int pressed_t = 0;
+bool button_pressed = false;
 bool btnPressed()
 {
   int fsrADC = analogRead(FSR_PIN);
@@ -134,7 +135,7 @@ bool btnPressed()
     // Use voltage and static resistor value to 
     // calculate FSR resistance:
     float fsrR = R_DIV * (VCC / fsrV - 1.0);
-    Serial1.println("Resistance: " + String(fsrR) + " ohms");
+    //Serial1.println("Resistance: " + String(fsrR) + " ohms");
     // Guesstimate force based on slopes in figure 3 of
     // FSR datasheet:
     float force;
@@ -145,8 +146,8 @@ bool btnPressed()
     else
       force =  fsrG / 0.000000642857;
 
-    LOG_PORT.print("Force: " + String(force) + " g\n");
-    Serial1.println();
+    //LOG_PORT.print("Force: " + String(force) + " g\n");
+    //Serial1.println();
     
     if (force > PRESSURE_THRESH)
     {
@@ -241,12 +242,12 @@ void loop()
     parseSerialInput(LOG_PORT.read()); // parse it
   }
   */
-  /*
-  if (btnPressed())
+  button_pressed = btnPressed();
+  /*if (button_pressed)
   {
     LOG_PORT.print("PRESSED\n"); //TODO: Write to SD card
-  }
-  */
+  }*/
+  
   if (LOG_PORT.available()) {
     processSyncMessage();
   }
@@ -366,6 +367,7 @@ void logIMUData(void)
   {
     imuLog += String(imu.computeCompassHeading(), 2) + ", ";
   }
+  imuLog += String(button_pressed) + ", ";
   
   // Remove last comma/space:
   imuLog.remove(imuLog.length() - 2, 2);
