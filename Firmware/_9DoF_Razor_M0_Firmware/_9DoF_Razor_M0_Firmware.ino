@@ -96,33 +96,9 @@ void put_timestamp()
 /////////////////////
 #define TIME_HEADER  "T"   // Header tag for serial time sync message
 #define TIME_REQUEST  7    // ASCII bell character requests a time sync message 
-void digitalClockDisplay(){
-  // digital clock display of the time
-  LOG_PORT.print(hour());
-  printDigits(minute());
-  printDigits(second());
-  LOG_PORT.print(" ");
-  LOG_PORT.print(day());
-  LOG_PORT.print(" ");
-  LOG_PORT.print(month());
-  LOG_PORT.print(" ");
-  LOG_PORT.print(year()); 
-  LOG_PORT.println(); 
-}
-
-void printDigits(int digits){
-  // utility function for digital clock display: prints preceding colon and leading 0
-  LOG_PORT.print(":");
-  if(digits < 10)
-    LOG_PORT.print('0');
-  LOG_PORT.print(digits);
-}
-
-
+const unsigned long DEFAULT_TIME = 1357041600; // Jan 1 2013
 void processSyncMessage() {
   unsigned long pctime;
-  const unsigned long DEFAULT_TIME = 1357041600; // Jan 1 2013
-
   if(LOG_PORT.find(TIME_HEADER)) {
      pctime = LOG_PORT.parseInt();
      if( pctime >= DEFAULT_TIME) { // check the integer is a valid time (greater than Jan 1 2013)
@@ -252,7 +228,7 @@ void setup()
 
   // For production testing only
   // To catch a "$" and enter testing mode
-  Serial1.begin(9600);
+  Serial1.begin(115200);
 }
 
 void loop()
@@ -271,12 +247,8 @@ void loop()
     LOG_PORT.print("PRESSED\n"); //TODO: Write to SD card
   }
   */
-
   if (LOG_PORT.available()) {
     processSyncMessage();
-  }
-  if (timeStatus()!= timeNotSet) {
-    digitalClockDisplay();  
   }
   if (timeStatus() == timeSet) {
     digitalWrite(13, HIGH); // LED on if synced
@@ -285,7 +257,7 @@ void loop()
   }
   
   timer.update();
-  /*
+  
   // Then check IMU for new data, and log it
   if ( !imu.fifoAvailable() ) // If no new data is available
     return;                   // return to the top of the loop
@@ -308,7 +280,7 @@ void loop()
   {
     if ( Serial1.read() == '$' ) production_testing();
   }
-  */
+  
 }
 
 void logIMUData(void)
@@ -316,7 +288,10 @@ void logIMUData(void)
   String imuLog = ""; // Create a fresh line to log
   if (enableTimeLog) // If time logging is enabled
   {
-    imuLog += String(imu.time) + ", "; // Add time to log string
+    //microseconds since launch:
+    //imuLog += String(imu.time) + ", "; // Add time to log string
+    //epoch:
+    imuLog += String(now()) + ", "; // Add time to log string
   }
   if (enableAccel) // If accelerometer logging is enabled
   {
